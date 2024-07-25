@@ -1,20 +1,41 @@
-﻿# CMakeList.txt : CMake project for voxel-game, include source and define
-# project specific logic here.
-#
-cmake_minimum_required (VERSION 3.20)
+﻿cmake_minimum_required(VERSION 3.20)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+project(voxel-game)
+
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+# Update submodules as needed
+    option(GIT_SUBMODULE "Check submodules during build" ON)
+    if(GIT_SUBMODULE)
+        message(STATUS "Submodule update")
+        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                        RESULT_VARIABLE GIT_SUBMOD_RESULT)
+        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+            message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+        endif()
+    endif()
 endif()
 
-project ("voxel-game")
+add_executable("${CMAKE_PROJECT_NAME}")
 
-# Add source to this project's executable.
-add_executable (voxel-game  )
+set_property(TARGET "${CMAKE_PROJECT_NAME}" PROPERTY CXX_STANDARD 20)
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET voxel-game PROPERTY CXX_STANDARD 20)
-endif()
+add_subdirectory(extern/glad)	#opengl loader
+add_subdirectory(extern/glfw)
+add_subdirectory(extern/glm)	#math library
+
+target_link_libraries("${CMAKE_PROJECT_NAME}" PUBLIC glfw glad glm)
+
+# Define MY_SOURCES to be a list of all the source files
+file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE DEP CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/*.cpp")
+
+target_sources("${CMAKE_PROJECT_NAME}" PRIVATE ${MY_SOURCES} )
+target_sources("${CMAKE_PROJECT_NAME}" PRIVATE ${DEP} )
+
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/extern/stb")
+
+target_compile_definitions("${CMAKE_PROJECT_NAME}" PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD)
 
